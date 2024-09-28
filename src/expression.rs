@@ -1,5 +1,4 @@
 /// This crate contains arithmetic expressions parsers
-
 use crate::combinators::*;
 
 /// Arithmetical operation
@@ -8,33 +7,26 @@ pub enum Operand {
     PLUS,
     MINUS,
     MULT,
-    DIV
+    DIV,
 }
-
 
 /// Creates a parser to parse "+" or "-"
 pub fn plus_minus() -> impl FnOnce(&str) -> ParserResult<Operand> {
-    |str| {
-        match str.chars().next()? {
-            '+' => Some(Parsed::new(Operand::PLUS, &str[1..])),
-            '-' => Some(Parsed::new(Operand::MINUS, &str[1..])),
-            _ => None
-        }
+    |str| match str.chars().next()? {
+        '+' => Some(Parsed::new(Operand::PLUS, &str[1..])),
+        '-' => Some(Parsed::new(Operand::MINUS, &str[1..])),
+        _ => None,
     }
 }
-
 
 // Creates a parser to parses "*" or "/"
 pub fn mul_div() -> impl FnOnce(&str) -> ParserResult<Operand> {
-    |str| {
-        match str.chars().next()? {
-            '*' => Some(Parsed::new(Operand::MULT, &str[1..])),
-            '/' => Some(Parsed::new(Operand::DIV, &str[1..])),
-            _ => None
-        }
+    |str| match str.chars().next()? {
+        '*' => Some(Parsed::new(Operand::MULT, &str[1..])),
+        '/' => Some(Parsed::new(Operand::DIV, &str[1..])),
+        _ => None,
     }
 }
-
 
 #[cfg(test)]
 mod tests {

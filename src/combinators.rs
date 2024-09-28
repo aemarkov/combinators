@@ -1,6 +1,5 @@
 /// This crate contains basic combinators
 
-
 /// Result of the parsing
 /// `value`    - parsed value
 /// `residual` - rest of the string not parsed
@@ -11,8 +10,8 @@ pub struct Parsed<'a, T> {
 }
 
 impl<'a, T> Parsed<'a, T> {
-    pub fn new(value: T, residual: &'a str) -> Self{
-        Self { value, residual, }
+    pub fn new(value: T, residual: &'a str) -> Self {
+        Self { value, residual }
     }
 }
 
@@ -26,7 +25,6 @@ fn parsed<'a, T>(value: T, residual: &'a str) -> Parsed<'a, T> {
 /// None - parsed failed
 pub type ParserResult<'a, T> = Option<Parsed<'a, T>>;
 
-
 /// Creates a parsed which expects a given string
 pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str> + 'b {
     move |str: &'a str| {
@@ -38,52 +36,41 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
     }
 }
 
-
 /// Combines two parsers to parse both subsequent expressions
 pub fn and<'a, F1, F2, R1, R2>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2)>
-    where F1: FnOnce(&'a str) -> ParserResult<'a, R1>,
-          F2: FnOnce(&'a str) -> ParserResult<'a, R2>
+where
+    F1: FnOnce(&'a str) -> ParserResult<'a, R1>,
+    F2: FnOnce(&'a str) -> ParserResult<'a, R2>,
 {
     |str: &'a str| {
         f1(str).and_then(|res1| {
-            f2(res1.residual).map(|res2| {
-                parsed((res1.value, res2.value), &res2.residual)
-            })
+            f2(res1.residual).map(|res2| parsed((res1.value, res2.value), &res2.residual))
         })
     }
 }
 
-
 /// Combines two parsers to parse either first expression or another
 pub fn or<'a, F1, F2, R>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> ParserResult<'a, R>
-    where F1: FnOnce(&'a str) -> ParserResult<'a, R>,
-          F2: FnOnce(&'a str) -> ParserResult<'a, R>
+where
+    F1: FnOnce(&'a str) -> ParserResult<'a, R>,
+    F2: FnOnce(&'a str) -> ParserResult<'a, R>,
 {
-    |str: &'a str| {
-        f1(str).or_else(|| {
-            f2(str)
-        })
-    }
+    |str: &'a str| f1(str).or_else(|| f2(str))
 }
 
 /// Creates a parser to skip a whitespace
 pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
     |str| {
-        let pos = str
-            .find(|c| !char::is_whitespace(c))
-            .unwrap_or(str.len());
+        let pos = str.find(|c| !char::is_whitespace(c)).unwrap_or(str.len());
 
         Some(parsed((), &str[pos..]))
     }
 }
 
-
 /// Creates parser to parse an u32 integer
 pub fn int_u32() -> impl FnOnce(&str) -> ParserResult<u32> {
     |str| {
-        let idx = str
-            .find(|c| !char::is_numeric(c))
-            .unwrap_or(str.len());
+        let idx = str.find(|c| !char::is_numeric(c)).unwrap_or(str.len());
 
         str[..idx]
             .parse::<u32>()
@@ -91,7 +78,6 @@ pub fn int_u32() -> impl FnOnce(&str) -> ParserResult<u32> {
             .map(|x| parsed(x, &str[idx..]))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
