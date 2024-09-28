@@ -45,15 +45,11 @@ pub fn and<'a, F1, F2, R1, R2>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> Parser
           F2: FnOnce(&'a str) -> ParserResult<'a, R2>
 {
     |str: &'a str| {
-        if let Some(res1) = f1(&str) {
-            if let Some(res2) = f2(res1.residual) {
-                Some(Parsed::new((res1.value, res2.value), &res2.residual))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        f1(str).and_then(|res1| {
+            f2(res1.residual).map(|res2| {
+                parsed((res1.value, res2.value), &res2.residual)
+            })
+        })
     }
 }
 
@@ -64,24 +60,20 @@ pub fn or<'a, F1, F2, R>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> ParserResult
           F2: FnOnce(&'a str) -> ParserResult<'a, R>
 {
     |str: &'a str| {
-        let res1 = f1(str);
-        if res1.is_some() {
-            res1
-        } else {
+        f1(str).or_else(|| {
             f2(str)
-        }
+        })
     }
 }
 
 /// Creates a parser to skip a whitespace
 pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
     |str| {
-        for (i, c) in str.chars().enumerate() {
-            if !char::is_whitespace(c) {
-                return Some(Parsed::new((), &str[i..]));
-            }
-        }
-        Some(Parsed::new((), &str[str.len()..]))
+        let pos = str
+            .find(|c| !char::is_whitespace(c))
+            .unwrap_or(str.len());
+
+        Some(parsed((), &str[pos..]))
     }
 }
 
@@ -89,23 +81,14 @@ pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
 /// Creates parser to parse an u32 integer
 pub fn int_u32() -> impl FnOnce(&str) -> ParserResult<u32> {
     |str| {
-        let mut value: u32 = 0;
-        let mut i = 0;
+        let idx = str
+            .find(|c| !char::is_numeric(c))
+            .unwrap_or(str.len());
 
-        for c in str.chars() {
-            if let Some(digit) = c.to_digit(10) {
-                value = value.checked_mul(10)?.checked_add(digit)?;
-                i +=  1;
-            } else {
-                break;
-            }
-        }
-
-        if i > 0 {
-            Some(Parsed::new(value, &str[i..]))
-        } else {
-            None
-        }
+        str[..idx]
+            .parse::<u32>()
+            .ok()
+            .map(|x| parsed(x, &str[idx..]))
     }
 }
 
