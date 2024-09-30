@@ -37,25 +37,34 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
 }
 
 /// Combines two parsers to parse both subsequent expressions
-pub fn and<'a, F1, F2, R1, R2>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2)>
+pub fn and<'a, P1, P2, R1, R2>(p1: P1, p2: P2) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2)>
 where
-    F1: FnOnce(&'a str) -> ParserResult<'a, R1>,
-    F2: FnOnce(&'a str) -> ParserResult<'a, R2>,
+    P1: FnOnce(&'a str) -> ParserResult<'a, R1>,
+    P2: FnOnce(&'a str) -> ParserResult<'a, R2>,
 {
     |str: &'a str| {
-        f1(str).and_then(|res1| {
-            f2(res1.residual).map(|res2| parsed((res1.value, res2.value), &res2.residual))
+        p1(str).and_then(|res1| {
+            p2(res1.residual).map(|res2| parsed((res1.value, res2.value), &res2.residual))
         })
     }
 }
 
 /// Combines two parsers to parse either first expression or another
-pub fn or<'a, F1, F2, R>(f1: F1, f2: F2) -> impl FnOnce(&'a str) -> ParserResult<'a, R>
+pub fn or<'a, P1, P2, R>(p1: P1, p2: P2) -> impl FnOnce(&'a str) -> ParserResult<'a, R>
 where
-    F1: FnOnce(&'a str) -> ParserResult<'a, R>,
-    F2: FnOnce(&'a str) -> ParserResult<'a, R>,
+    P1: FnOnce(&'a str) -> ParserResult<'a, R>,
+    P2: FnOnce(&'a str) -> ParserResult<'a, R>,
 {
-    |str: &'a str| f1(str).or_else(|| f2(str))
+    |str: &'a str| p1(str).or_else(|| p2(str))
+}
+
+/// Maps ParserResult<T> of  the parser P to the ParserResult<U> by applying a function T -> U
+pub fn map<'a, T, U, P, F>(p: P, f: F) -> impl FnOnce(&'a str) -> ParserResult<'a, U>
+where
+    P: FnOnce(&'a str) -> ParserResult<'a, T>,
+    F: FnOnce(T) -> U,
+{
+    |str: &'a str| p(str).map(|x| parsed(f(x.value), x.residual))
 }
 
 /// Creates a parser to skip a whitespace
@@ -136,6 +145,18 @@ mod tests {
         assert_eq!(res.unwrap().residual, "123");
 
         let res = or(tag("abc"), tag("def"))("123");
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_map() {
+        let res = map(tag("abc"), |x| x.len())("abc123");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, 3);
+        assert_eq!(res.unwrap().residual, "123");
+
+
+        let res = map(tag("abc"), |x| x.len())("123");
         assert!(res.is_none());
     }
 
