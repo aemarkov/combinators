@@ -3,7 +3,7 @@
 /// Result of the parsing
 /// `value`    - parsed value
 /// `residual` - rest of the string not parsed
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Parsed<'a, T> {
     pub value: T,
     pub residual: &'a str,
@@ -155,6 +155,10 @@ mod tests {
         assert_eq!(res.unwrap().value, 3);
         assert_eq!(res.unwrap().residual, "123");
 
+        let res = map(int_u32(), |x| x * 2)("123abc");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, 246);
+        assert_eq!(res.unwrap().residual, "abc");
 
         let res = map(tag("abc"), |x| x.len())("123");
         assert!(res.is_none());
