@@ -1,6 +1,6 @@
 /// This crate contains arithmetic expressions parsers
 use crate::combinators::*;
-use std::fmt::{write, Debug, Display};
+use std::fmt::{Debug, Display};
 
 /// Arithmetical operation
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -51,10 +51,11 @@ TERM  -> num
 */
 
 /// Abstract syntax tree node for arithmetic expression grammar
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AstNode {
     Expr(Box<AstNode>, Box<AstNode>),
-    Expr1(Operand, Box<AstNode>, Box<AstNode>),
+    Expr1(Box<AstNode>, Box<AstNode>, Box<AstNode>),
+    Op(Operand),
     Term(u32),
     Eps,
 }
@@ -62,10 +63,46 @@ pub enum AstNode {
 impl Display for AstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AstNode::Expr(a, b) => write!(f, "EXPR({} {})", a, b),
-            AstNode::Expr1(op, a, b) => write!(f, "EXPR'({} {} {}", op, a, b),
-            AstNode::Term(v) => write!(f, "{}", v),
-            AstNode::Eps => write!(f, "ε"),
+            AstNode::Expr(_, _) => self.print_node("", true, f),
+            _ => Err(std::fmt::Error),
+        }
+    }
+}
+
+impl AstNode {
+    fn print_node(
+        &self,
+        prefix: &str,
+        is_last: bool,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        // Prefix - pseudo-graphic tree lines
+        let node_prefix = if prefix.len() > 0 {
+            prefix.to_owned() + if is_last { "└─" } else { "├─" }
+        } else {
+            // Don't print prefix for root
+            "".to_owned()
+        };
+
+        let child_prefix = prefix.to_owned()
+            + if is_last { " " } else { "│" }
+            + if prefix.len() > 0 { "  " } else { "" };
+
+        match self {
+            AstNode::Expr(a, b) => {
+                writeln!(f, "{}EXPR", node_prefix)?;
+                a.print_node(&child_prefix, false, f)?;
+                b.print_node(&child_prefix, true, f)
+            }
+            AstNode::Expr1(a, b, c) => {
+                writeln!(f, "{}EXPR'", node_prefix)?;
+                a.print_node(&child_prefix, false, f)?;
+                b.print_node(&child_prefix, false, f)?;
+                c.print_node(&child_prefix, true, f)
+            }
+            AstNode::Op(op) => writeln!(f, "{}OP({})", node_prefix, op),
+            AstNode::Term(val) => writeln!(f, "{}TERM({})", node_prefix, val),
+            AstNode::Eps => writeln!(f, "{}ε", node_prefix),
         }
     }
 }
@@ -92,7 +129,7 @@ pub fn nt_expr(str: &str) -> ParserResult<AstNode> {
 fn nt_expr1<'a>(str: &'a str) -> ParserResult<AstNode> {
     or(
         map(and(and(plus_minus(), nt_term), nt_expr1), |((op, a), b)| {
-            AstNode::Expr1(op, Box::new(a), Box::new(b))
+            AstNode::Expr1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
         }),
         eps,
     )(str)
@@ -140,5 +177,37 @@ mod tests {
 
         let res = mul_div()("1 * 1");
         assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_ast_print() {
+        // Commit the current formatting behavior
+        // This is not a  correct AST, but it covers more cases
+        let res = AstNode::Expr(
+            Box::new(AstNode::Expr1(
+                Box::new(AstNode::Term(1)),
+                Box::new(AstNode::Op(Operand::MULT)),
+                Box::new(AstNode::Term(2)),
+            )),
+            Box::new(AstNode::Expr1(
+                Box::new(AstNode::Term(3)),
+                Box::new(AstNode::Op(Operand::PLUS)),
+                Box::new(AstNode::Term(4)),
+            )),
+        );
+
+        let output = res.to_string();
+        let expected_output = "EXPR
+ ├─EXPR'
+ │  ├─TERM(1)
+ │  ├─OP(*)
+ │  └─TERM(2)
+ └─EXPR'
+    ├─TERM(3)
+    ├─OP(+)
+    └─TERM(4)
+";
+
+        assert_eq!(output, expected_output);
     }
 }
