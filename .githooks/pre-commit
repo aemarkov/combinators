@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cargo fmt --all -- --check
+
+if [ $? -ne 0 ]; then
+    echo "Rust code is not properly formatted. Run 'cargo fmt' to fix it."
+    exit 1
+fi
