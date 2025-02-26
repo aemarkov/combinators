@@ -36,6 +36,37 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
     }
 }
 
+/// Takes a specific number of characters
+pub fn take(n: usize) -> impl FnOnce(&str) -> ParserResult<&str> {
+    move |str| {
+        let mut it = str.char_indices();
+
+        for i in 0..n {
+            if it.next().is_none() {
+                return None;
+            }
+        }
+
+        let idx = it.next().map(|(idx, _)| idx).unwrap_or(str.len());
+        Some(parsed(&str[..idx], &str[idx..]))
+    }
+}
+
+/// Takes a characters while predicate is true
+pub fn take_while<F>(f: F) -> impl FnOnce(&str) -> ParserResult<&str>
+where
+    F: Fn(char) -> bool,
+{
+    move |str| {
+        if let Some((idx, _)) = (str.char_indices().skip_while(|(_, c)| f(*c))).next() {
+            println!("{} | {}", &str[..idx], &str[idx..]);
+            Some(parsed(&str[..idx], &str[idx..]))
+        } else {
+            Some(parsed(&str, ""))
+        }
+    }
+}
+
 /// Combines two parsers to parse both subsequent expressions
 pub fn and<'a, P1, P2, R1, R2>(p1: P1, p2: P2) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2)>
 where
@@ -69,11 +100,7 @@ where
 
 /// Creates a parser to skip a whitespace
 pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
-    |str| {
-        let pos = str.find(|c| !char::is_whitespace(c)).unwrap_or(str.len());
-
-        Some(parsed((), &str[pos..]))
-    }
+    |str| take_while(|c| c.is_whitespace())(str).and_then(|res| Some(parsed((), res.residual)))
 }
 
 /// Creates parser to parse an u32 integer
@@ -106,6 +133,40 @@ mod tests {
 
         let res = tag("abc")("123");
         assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_take() {
+        let res = take(6)("приветмир");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "привет");
+        assert_eq!(res.unwrap().residual, "мир");
+
+        let res = take(6)("привет");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "привет");
+        assert_eq!(res.unwrap().residual, "");
+
+        let res = take(6)("прив");
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_take_while() {
+        let res = take_while(|c| c.is_alphabetic())("привет123");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "привет");
+        assert_eq!(res.unwrap().residual, "123");
+
+        let res = take_while(|c| c.is_alphabetic())("привет");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "привет");
+        assert_eq!(res.unwrap().residual, "");
+
+        let res = take_while(|c| c.is_alphabetic())("123привет");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "");
+        assert_eq!(res.unwrap().residual, "123привет");
     }
 
     #[test]
