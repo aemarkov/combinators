@@ -1,5 +1,5 @@
 /// This crate contains arithmetic expressions parsers
-use crate::combinators::*;
+use combinators::*;
 use std::fmt::{Debug, Display};
 
 /// Arithmetical operation

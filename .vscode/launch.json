@@ -7,10 +7,12 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
+            "name": "Example Expressions",
             "cargo": {
                 "args": [
-                    "build"
+                    "build",
+                    "--example",
+                    "expressions"
                 ]
             },
             "cwd": "${workspaceFolder}"

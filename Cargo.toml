@@ -3,4 +3,12 @@ name = "combinators"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "combinators"
+path = "src/lib.rs"
+
 [dependencies]
+
+[[example]]
+name = "expressions"
+path = "examples/expressions/main.rs"
