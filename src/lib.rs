@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 /// This crate contains basic combinators
 
 /// Result of the parsing
@@ -16,7 +18,7 @@ impl<'a, T> Parsed<'a, T> {
 }
 
 /// Helper function to make Parsed<> construction less verbose
-fn parsed<'a, T>(value: T, residual: &'a str) -> Parsed<'a, T> {
+pub fn parsed<'a, T>(value: T, residual: &'a str) -> Parsed<'a, T> {
     Parsed { value, residual }
 }
 
@@ -59,7 +61,6 @@ where
 {
     move |str| {
         if let Some((idx, _)) = (str.char_indices().skip_while(|(_, c)| f(*c))).next() {
-            println!("{} | {}", &str[..idx], &str[idx..]);
             Some(parsed(&str[..idx], &str[idx..]))
         } else {
             Some(parsed(&str, ""))
@@ -152,15 +153,15 @@ pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
     |str| take_while(|c| c.is_whitespace())(str).and_then(|res| Some(parsed((), res.residual)))
 }
 
-/// Creates parser to parse an u32 integer
-pub fn int_u32() -> impl FnOnce(&str) -> ParserResult<u32> {
+/// Creates parser to parse something from string
+pub fn from_str<T>() -> impl FnOnce(&str) -> ParserResult<T>
+where
+    T: FromStr,
+{
     |str| {
         let idx = str.find(|c| !char::is_numeric(c)).unwrap_or(str.len());
 
-        str[..idx]
-            .parse::<u32>()
-            .ok()
-            .map(|x| parsed(x, &str[idx..]))
+        str[..idx].parse::<T>().ok().map(|x| parsed(x, &str[idx..]))
     }
 }
 
@@ -307,7 +308,7 @@ mod tests {
         assert_eq!(res.unwrap().value, 3);
         assert_eq!(res.unwrap().residual, "123");
 
-        let res = map(int_u32(), |x| x * 2)("123abc");
+        let res = map(from_str(), |x| x * 2)("123abc");
         assert!(res.is_some());
         assert_eq!(res.unwrap().value, 246);
         assert_eq!(res.unwrap().residual, "abc");
@@ -336,17 +337,17 @@ mod tests {
 
     #[test]
     fn test_number() {
-        let res = int_u32()("1234");
+        let res = from_str()("1234");
         assert!(res.is_some());
         assert_eq!(res.unwrap().value, 1234);
         assert_eq!(res.unwrap().residual, "");
 
-        let res = int_u32()("1234hello");
+        let res = from_str()("1234hello");
         assert!(res.is_some());
         assert_eq!(res.unwrap().value, 1234);
         assert_eq!(res.unwrap().residual, "hello");
 
-        let res = int_u32()("hello");
+        let res = from_str()("hello");
         assert!(res.is_none());
     }
 }
