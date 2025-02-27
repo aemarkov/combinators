@@ -146,29 +146,30 @@ functions don't create parsers, they are parsers. It's OK while they don't have 
 */
 
 pub fn nt_expr(str: &str) -> ParserResult<AstNode> {
-    map(and(nt_term, nt_expr1), |(a, b)| {
+    map(and2(nt_term, nt_expr1), |(a, b)| {
         AstNode::Expr(Box::new(a), Box::new(b))
     })(str)
 }
 
 fn nt_expr1<'a>(str: &'a str) -> ParserResult<AstNode> {
     or(
-        map(and(and(plus_minus(), nt_term), nt_expr1), |((op, a), b)| {
-            AstNode::Expr1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
-        }),
+        map(
+            and2(and2(plus_minus(), nt_term), nt_expr1),
+            |((op, a), b)| AstNode::Expr1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b)),
+        ),
         eps,
     )(str)
 }
 
 pub fn nt_term(str: &str) -> ParserResult<AstNode> {
-    map(and(factor, nt_term1), |(a, b)| {
+    map(and2(factor, nt_term1), |(a, b)| {
         AstNode::Term(Box::new(a), Box::new(b))
     })(str)
 }
 
 pub fn nt_term1(str: &str) -> ParserResult<AstNode> {
     or(
-        map(and(and(mul_div(), factor), nt_term1), |((op, a), b)| {
+        map(and2(and2(mul_div(), factor), nt_term1), |((op, a), b)| {
             AstNode::Term1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
         }),
         eps,
@@ -178,9 +179,10 @@ pub fn nt_term1(str: &str) -> ParserResult<AstNode> {
 pub fn factor(str: &str) -> ParserResult<AstNode> {
     or(
         map(nt_num, |x| AstNode::Factor(Box::new(x))),
-        map(and(and(brace_open, nt_expr), brace_close), |((_, x), _)| {
-            AstNode::Factor(Box::new(x))
-        }),
+        map(
+            and2(and2(brace_open, nt_expr), brace_close),
+            |((_, x), _)| AstNode::Factor(Box::new(x)),
+        ),
     )(str)
 }
 
