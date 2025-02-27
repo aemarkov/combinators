@@ -153,10 +153,9 @@ pub fn nt_expr(str: &str) -> ParserResult<AstNode> {
 
 fn nt_expr1<'a>(str: &'a str) -> ParserResult<AstNode> {
     or(
-        map(
-            and2(and2(plus_minus(), nt_term), nt_expr1),
-            |((op, a), b)| AstNode::Expr1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b)),
-        ),
+        map(and3(plus_minus(), nt_term, nt_expr1), |(op, a, b)| {
+            AstNode::Expr1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
+        }),
         eps,
     )(str)
 }
@@ -169,7 +168,7 @@ pub fn nt_term(str: &str) -> ParserResult<AstNode> {
 
 pub fn nt_term1(str: &str) -> ParserResult<AstNode> {
     or(
-        map(and2(and2(mul_div(), factor), nt_term1), |((op, a), b)| {
+        map(and3(mul_div(), factor, nt_term1), |(op, a, b)| {
             AstNode::Term1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
         }),
         eps,
@@ -179,10 +178,9 @@ pub fn nt_term1(str: &str) -> ParserResult<AstNode> {
 pub fn factor(str: &str) -> ParserResult<AstNode> {
     or(
         map(nt_num, |x| AstNode::Factor(Box::new(x))),
-        map(
-            and2(and2(brace_open, nt_expr), brace_close),
-            |((_, x), _)| AstNode::Factor(Box::new(x)),
-        ),
+        map(and3(brace_open, nt_expr, brace_close), |(_, x, _)| {
+            AstNode::Factor(Box::new(x))
+        }),
     )(str)
 }
 
@@ -245,9 +243,20 @@ mod tests {
     }
 
     #[test]
+    fn test_parse() {
+        // Commit the current parsing behavior
+        // It's too hard to create AST by hand, so just put string repr here
+        let input = "(1+2)*3";
+        let res = nt_expr(input);
+        assert!(res.is_some());
+
+        let expected = "Expr(Term(Factor(Expr(Term(Factor(Num(1)), Eps), Expr1(Op(PLUS), Term(Factor(Num(2)), Eps), Eps))), Term1(Op(MULT), Factor(Num(3)), Eps)), Eps)";
+        assert_eq!(format!("{:?}", res.unwrap().value), expected);
+    }
+
+    #[test]
     fn test_ast_print() {
         // Commit the current formatting behavior
-        // This is not a  correct AST, but it covers more cases
         let res = AstNode::Expr(
             Box::new(AstNode::Term(
                 Box::new(AstNode::Factor(Box::new(AstNode::Num(1)))),
