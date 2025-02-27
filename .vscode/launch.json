@@ -16,6 +16,19 @@
                 ]
             },
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Example Color",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example",
+                    "color"
+                ]
+            },
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

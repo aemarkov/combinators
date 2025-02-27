@@ -12,3 +12,7 @@ path = "src/lib.rs"
 [[example]]
 name = "expressions"
 path = "examples/expressions/main.rs"
+
+[[example]]
+name = "color"
+path = "examples/color.rs"
