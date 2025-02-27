@@ -42,12 +42,19 @@ pub fn mul_div() -> impl FnOnce(&str) -> ParserResult<Operand> {
 
 /*
 Example:
-Parse an expression only "+" and "-", e.g. "1+2-3" (yes, no spaces)
+Parse an expression with "+", "-", "*", "/" "1+2*3" (yes, no spaces)
 
 Grammar:
-EXPR  -> TERM EXPR'
-EXPR' -> + TERM EXPR' | eps
-TERM  -> num
+EXPR    -> TERM EXPR'
+EXPR'   -> + TERM EXPR'
+        |  - TERM EXPR'
+        |  eps
+TERM    -> FACTOR TERM'
+TERM'   -> * FACTOR TERM'
+        |  / FACTOR TERM'
+        |  eps
+FACTOR  -> num
+        | (EXPR)
 */
 
 /// Abstract syntax tree node for arithmetic expression grammar
@@ -55,8 +62,11 @@ TERM  -> num
 pub enum AstNode {
     Expr(Box<AstNode>, Box<AstNode>),
     Expr1(Box<AstNode>, Box<AstNode>, Box<AstNode>),
+    Term(Box<AstNode>, Box<AstNode>),
+    Term1(Box<AstNode>, Box<AstNode>, Box<AstNode>),
+    Factor(Box<AstNode>),
+    Num(u32),
     Op(Operand),
-    Term(u32),
     Eps,
 }
 
@@ -100,8 +110,23 @@ impl AstNode {
                 b.print_node(&child_prefix, false, f)?;
                 c.print_node(&child_prefix, true, f)
             }
+            AstNode::Term(a, b) => {
+                writeln!(f, "{}TERM", node_prefix)?;
+                a.print_node(&child_prefix, false, f)?;
+                b.print_node(&child_prefix, true, f)
+            }
+            AstNode::Term1(a, b, c) => {
+                writeln!(f, "{}TERM'", node_prefix)?;
+                a.print_node(&child_prefix, false, f)?;
+                b.print_node(&child_prefix, false, f)?;
+                c.print_node(&child_prefix, true, f)
+            }
+            AstNode::Factor(a) => {
+                writeln!(f, "{}FACTOR", node_prefix)?;
+                a.print_node(&child_prefix, true, f)
+            }
+            AstNode::Num(val) => writeln!(f, "{}NUM({})", node_prefix, val),
             AstNode::Op(op) => writeln!(f, "{}OP({})", node_prefix, op),
-            AstNode::Term(val) => writeln!(f, "{}TERM({})", node_prefix, val),
             AstNode::Eps => writeln!(f, "{}ε", node_prefix),
         }
     }
@@ -135,12 +160,50 @@ fn nt_expr1<'a>(str: &'a str) -> ParserResult<AstNode> {
     )(str)
 }
 
-fn eps(str: &str) -> ParserResult<AstNode> {
-    Some(Parsed::new(AstNode::Eps, str))
+pub fn nt_term(str: &str) -> ParserResult<AstNode> {
+    map(and(factor, nt_term1), |(a, b)| {
+        AstNode::Term(Box::new(a), Box::new(b))
+    })(str)
 }
 
-fn nt_term<'a>(str: &'a str) -> ParserResult<AstNode> {
-    map(int_u32(), |x| AstNode::Term(x))(str)
+pub fn nt_term1(str: &str) -> ParserResult<AstNode> {
+    or(
+        map(and(and(mul_div(), factor), nt_term1), |((op, a), b)| {
+            AstNode::Term1(Box::new(AstNode::Op(op)), Box::new(a), Box::new(b))
+        }),
+        eps,
+    )(str)
+}
+
+pub fn factor(str: &str) -> ParserResult<AstNode> {
+    or(
+        map(nt_num, |x| AstNode::Factor(Box::new(x))),
+        map(and(and(brace_open, nt_expr), brace_close), |((_, x), _)| {
+            AstNode::Factor(Box::new(x))
+        }),
+    )(str)
+}
+
+pub fn brace_open(str: &str) -> ParserResult<()> {
+    match str.chars().next()? {
+        '(' => Some(Parsed::new((), &str[1..])),
+        _ => None,
+    }
+}
+
+pub fn brace_close(str: &str) -> ParserResult<()> {
+    match str.chars().next()? {
+        ')' => Some(Parsed::new((), &str[1..])),
+        _ => None,
+    }
+}
+
+pub fn nt_num(str: &str) -> ParserResult<AstNode> {
+    map(int_u32(), |x| AstNode::Num(x))(str)
+}
+
+fn eps(str: &str) -> ParserResult<AstNode> {
+    Some(Parsed::new(AstNode::Eps, str))
 }
 
 #[cfg(test)]
@@ -184,28 +247,41 @@ mod tests {
         // Commit the current formatting behavior
         // This is not a  correct AST, but it covers more cases
         let res = AstNode::Expr(
-            Box::new(AstNode::Expr1(
-                Box::new(AstNode::Term(1)),
-                Box::new(AstNode::Op(Operand::MULT)),
-                Box::new(AstNode::Term(2)),
+            Box::new(AstNode::Term(
+                Box::new(AstNode::Factor(Box::new(AstNode::Num(1)))),
+                Box::new(AstNode::Eps),
             )),
             Box::new(AstNode::Expr1(
-                Box::new(AstNode::Term(3)),
                 Box::new(AstNode::Op(Operand::PLUS)),
-                Box::new(AstNode::Term(4)),
+                Box::new(AstNode::Term(
+                    Box::new(AstNode::Factor(Box::new(AstNode::Num(2)))),
+                    Box::new(AstNode::Term1(
+                        Box::new(AstNode::Op(Operand::MULT)),
+                        Box::new(AstNode::Factor(Box::new(AstNode::Num(3)))),
+                        Box::new(AstNode::Eps),
+                    )),
+                )),
+                Box::new(AstNode::Eps),
             )),
         );
 
         let output = res.to_string();
         let expected_output = "EXPR
- ├─EXPR'
- │  ├─TERM(1)
- │  ├─OP(*)
- │  └─TERM(2)
+ ├─TERM
+ │  ├─FACTOR
+ │  │  └─NUM(1)
+ │  └─ε
  └─EXPR'
-    ├─TERM(3)
     ├─OP(+)
-    └─TERM(4)
+    ├─TERM
+    │  ├─FACTOR
+    │  │  └─NUM(2)
+    │  └─TERM'
+    │     ├─OP(*)
+    │     ├─FACTOR
+    │     │  └─NUM(3)
+    │     └─ε
+    └─ε
 ";
 
         assert_eq!(output, expected_output);
