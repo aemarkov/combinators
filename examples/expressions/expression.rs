@@ -25,8 +25,8 @@ impl Display for Operand {
 /// Creates a parser to parse "+" or "-"
 pub fn plus_minus() -> impl FnOnce(&str) -> ParserResult<Operand> {
     |str| match str.chars().next()? {
-        '+' => Some(Parsed::new(Operand::PLUS, &str[1..])),
-        '-' => Some(Parsed::new(Operand::MINUS, &str[1..])),
+        '+' => Some(parsed(Operand::PLUS, &str[1..])),
+        '-' => Some(parsed(Operand::MINUS, &str[1..])),
         _ => None,
     }
 }
@@ -34,8 +34,8 @@ pub fn plus_minus() -> impl FnOnce(&str) -> ParserResult<Operand> {
 // Creates a parser to parses "*" or "/"
 pub fn mul_div() -> impl FnOnce(&str) -> ParserResult<Operand> {
     |str| match str.chars().next()? {
-        '*' => Some(Parsed::new(Operand::MULT, &str[1..])),
-        '/' => Some(Parsed::new(Operand::DIV, &str[1..])),
+        '*' => Some(parsed(Operand::MULT, &str[1..])),
+        '/' => Some(parsed(Operand::DIV, &str[1..])),
         _ => None,
     }
 }
@@ -186,14 +186,14 @@ pub fn factor(str: &str) -> ParserResult<AstNode> {
 
 pub fn brace_open(str: &str) -> ParserResult<()> {
     match str.chars().next()? {
-        '(' => Some(Parsed::new((), &str[1..])),
+        '(' => Some(parsed((), &str[1..])),
         _ => None,
     }
 }
 
 pub fn brace_close(str: &str) -> ParserResult<()> {
     match str.chars().next()? {
-        ')' => Some(Parsed::new((), &str[1..])),
+        ')' => Some(parsed((), &str[1..])),
         _ => None,
     }
 }
@@ -203,7 +203,7 @@ pub fn nt_num(str: &str) -> ParserResult<AstNode> {
 }
 
 fn eps(str: &str) -> ParserResult<AstNode> {
-    Some(Parsed::new(AstNode::Eps, str))
+    Some(parsed(AstNode::Eps, str))
 }
 
 #[cfg(test)]
