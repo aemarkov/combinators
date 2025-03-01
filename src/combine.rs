@@ -1,7 +1,11 @@
 /// This module contains combinators - parsers to combine two or more parsers into a single parser
 use crate::types::*;
 
-/// Combines two parsers to parse both subsequent expressions
+/// Combines two parsers to parse both subsequent expressions:
+/// ```text
+/// EXPR -> EXPR1 EXPR2
+/// ```
+/// NOTE:
 /// While Rust doesn't support variadic generics, we have to implement
 /// separate function for all supported number of arguments manually
 // TODO: Try to use macros?
@@ -20,7 +24,10 @@ where
     }
 }
 
-/// Combines three parsers to parse both subsequent expressions
+/// Combines three parsers to parse both subsequent expressions:
+/// ```text
+/// EXPR -> EXPR1 EXPR2 EXPR3
+/// ```
 pub fn and3<'a, P1, P2, P3, R1, R2, R3>(
     p1: P1,
     p2: P2,
@@ -41,7 +48,10 @@ where
 }
 
 /// Combines multiple parsers to parse all subsequent expressions
-/// In contrast to and2(), and3() etc all parsers should have a same return type
+/// In contrast to [and2()], [and3()] etc all parsers should have a same return type
+/// ```text
+/// EXPR -> EXPR1 ... EXPR_N
+/// ```
 pub fn and<'a, P, I, R>(parsers: I) -> impl FnOnce(&'a str) -> ParserResult<'a, Vec<R>>
 where
     P: FnOnce(&'a str) -> ParserResult<'a, R>,
@@ -64,6 +74,10 @@ where
 }
 
 /// Combines two parsers to parse either first expression or another
+/// ```text
+/// EXPR -> EXPR1
+///      |  EXPR2
+/// ```
 pub fn or<'a, P1, P2, R>(p1: P1, p2: P2) -> impl FnOnce(&'a str) -> ParserResult<'a, R>
 where
     P1: FnOnce(&'a str) -> ParserResult<'a, R>,
@@ -72,13 +86,26 @@ where
     |str: &'a str| p1(str).or_else(|| p2(str))
 }
 
-/// Maps ParserResult<T> of  the parser P to the ParserResult<U> by applying a function T -> U
+/// Maps parser `str -> ParserResult<T>` to the parse `str -> ParserResult<U>`
+/// by applying a function T -> U
 pub fn map<'a, T, U, P, F>(p: P, f: F) -> impl FnOnce(&'a str) -> ParserResult<'a, U>
 where
     P: FnOnce(&'a str) -> ParserResult<'a, T>,
     F: FnOnce(T) -> U,
 {
     |str: &'a str| p(str).map(|x| parsed(f(x.value), x.residual))
+}
+
+/// Maps parser `str -> ParserResult<T>` to the parse `str -> ParserResult<U>`
+/// by applying a function T -> Option<U>. Differs from [map()] because it
+/// "flats" Option and produce `ParserResult<U>` instead of `ParserResult<Option<U>>`
+/// It's similar to functions like `flatmap` or `bind` from functional languages
+pub fn and_then<'a, T, U, P, F>(p: P, f: F) -> impl FnOnce(&'a str) -> ParserResult<'a, U>
+where
+    P: FnOnce(&'a str) -> ParserResult<'a, T>,
+    F: FnOnce(T) -> Option<U>,
+{
+    |str: &'a str| p(str).and_then(|x| f(x.value).map(|y| parsed(y, x.residual)))
 }
 
 #[cfg(test)]
@@ -176,6 +203,23 @@ mod tests {
         assert_eq!(res.unwrap().residual, "123");
 
         let res = map(tag("abc"), |x| x.len())("123");
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_and_then() {
+        // Successful take, success parse
+        let res = and_then(take(3), |x| x.parse::<u32>().ok())("123abc");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, 123);
+        assert_eq!(res.unwrap().residual, "abc");
+
+        // Successful take, failed parse
+        let res = and_then(take(3), |x| x.parse::<u32>().ok())("abcdef");
+        assert!(res.is_none());
+
+        // Failed take
+        let res = and_then(take(3), |x| x.parse::<u32>().ok())("ab");
         assert!(res.is_none());
     }
 }
