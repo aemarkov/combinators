@@ -45,7 +45,10 @@ fn number_with_comma<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
 
 /// Parses decimal with spaces around, e.g. " 10  "
 fn number_with_space<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
-    map(and3(whitespace(), from_str(), whitespace()), |(_, x, _)| x)
+    map(
+        and3(whitespace(), unsigned_int(), whitespace()),
+        |(_, x, _)| x,
+    )
 }
 
 #[cfg(test)]

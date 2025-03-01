@@ -199,7 +199,7 @@ pub fn brace_close(str: &str) -> ParserResult<()> {
 }
 
 pub fn nt_num(str: &str) -> ParserResult<AstNode> {
-    map(from_str(), |x| AstNode::Num(x))(str)
+    map(unsigned_int(), |x| AstNode::Num(x))(str)
 }
 
 fn eps(str: &str) -> ParserResult<AstNode> {

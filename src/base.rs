@@ -17,7 +17,7 @@ pub fn take(n: usize) -> impl FnOnce(&str) -> ParserResult<&str> {
     move |str| {
         let mut it = str.char_indices();
 
-        for i in 0..n {
+        for _ in 0..n {
             if it.next().is_none() {
                 return None;
             }
@@ -57,6 +57,11 @@ mod tests {
         assert!(res.is_some());
         assert_eq!(res.unwrap().value, "abc");
         assert_eq!(res.unwrap().residual, "");
+
+        let res = tag("")("abc");
+        assert!(res.is_some());
+        assert_eq!(res.unwrap().value, "");
+        assert_eq!(res.unwrap().residual, "abc");
 
         let res = tag("abc")("123");
         assert!(res.is_none());
