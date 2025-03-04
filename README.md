@@ -75,7 +75,7 @@ Some useful parsers
 
 ### Parse color
 
-TODO: link
+[Example: color](https://github.com/aemarkov/combinators/blob/master/examples/color.rs)
 
 Let's break down how to use this library with a simple example: parsing a color, like `#aabbcc` or `rgb(10, 20, 30)`.
 
@@ -154,7 +154,7 @@ fn color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
 
 ### Parse arithmetic expression
 
-TODO: link
+[Example: expressions](https://github.com/aemarkov/combinators/tree/master/examples/expressions)
 
 Let try a more complex example. We are going to parse simple arithmetic expressions like `2*(3-1)`. Expression consist of integer numbers, parentheses (`()`) and operations (`+-*/`).
 
