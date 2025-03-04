@@ -1,10 +1,22 @@
 mod expression;
 
+fn parse_args() -> Option<String> {
+    if std::env::args().len() != 2 {
+        return None;
+    }
+
+    return std::env::args().nth(1);
+}
+
 fn main() {
-    let input = "(1+2)*3";
-    let res = expression::nt_expr(input);
-    let res = res.unwrap();
-    println!("Input: {}", input);
-    println!("{:?}", res.value);
-    println!("AST:\n{}", res.value);
+    if let Some(input) = parse_args() {
+        if let Some(res) = expression::nt_expr(&input) {
+            println!("{:?}", res.value);
+            println!("AST:\n{}", res.value);
+        } else {
+            println!("Failed to parse");
+        }
+    } else {
+        println!("Invalid arguments");
+    }
 }
