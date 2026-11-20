@@ -21,7 +21,7 @@ fn hex_byte() -> impl FnOnce(&str) -> ParserResult<u8> {
         take(2)(str).and_then(|x| {
             u8::from_str_radix(x.value, 16)
                 .ok()
-                .map(|y| parsed(y, x.residual))
+                .map(|y| Parsed::new(y, x.residual))
         })
     }
 }

@@ -6,10 +6,7 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
     move |s: &'a str| {
         if s.starts_with(tag) {
             let (value, residual) = s.split_at(tag.len());
-            Some(Parsed {
-                value: value,
-                residual: residual,
-            })
+            Some(Parsed::new(value, residual))
         } else {
             None
         }
@@ -27,10 +24,7 @@ pub fn take<'a>(n: usize) -> impl FnOnce(&'a str) -> ParserResult<&'a str> {
             .chain(std::iter::once(s.len()))
             .nth(n)?;
         let (value, residual) = s.split_at(byte_offset);
-        Some(Parsed {
-            value: value,
-            residual: residual,
-        })
+        Some(Parsed::new(value, residual))
     }
 }
 
@@ -48,10 +42,7 @@ where
             .skip_while(|(_, c)| f(*c))
             .next()?;
         let (value, residual) = s.split_at(byte_offset.0);
-        Some(Parsed {
-            value: value,
-            residual: residual,
-        })
+        Some(Parsed::new(value, residual))
     }
 }
 

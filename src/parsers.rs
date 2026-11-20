@@ -5,7 +5,7 @@ use std::{ops::Neg, str::FromStr};
 
 /// Creates a parser to skip a whitespace
 pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
-    |str| take_while(|c| c.is_whitespace())(str).and_then(|res| Some(parsed((), res.residual)))
+    |str| take_while(|c| c.is_whitespace())(str).and_then(|res| Some(Parsed::new((), res.residual)))
 }
 
 // Helper macro to impl trait for multiple types and reduce boilerplate

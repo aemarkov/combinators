@@ -9,9 +9,10 @@ pub struct Parsed<'a, T> {
     pub residual: &'a str,
 }
 
-/// Helper function to make Parsed<> construction less verbose
-pub fn parsed<'a, T>(value: T, residual: &'a str) -> Parsed<'a, T> {
-    Parsed { value, residual }
+impl<'a, T> Parsed<'a, T> {
+    pub fn new(value: T, residual: &'a str) -> Self {
+        Parsed { value, residual }
+    }
 }
 
 /// Result of the parsing

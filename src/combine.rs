@@ -20,10 +20,7 @@ where
     |s: &'a str| {
         let res1 = p1(s)?;
         let res2 = p2(res1.residual)?;
-        Some(Parsed {
-            value: (res1.value, res2.value),
-            residual: res2.residual,
-        })
+        Some(Parsed::new((res1.value, res2.value), res2.residual))
     }
 }
 
@@ -45,10 +42,10 @@ where
         let res1 = p1(s)?;
         let res2 = p2(res1.residual)?;
         let res3 = p3(res2.residual)?;
-        Some(Parsed {
-            value: (res1.value, res2.value, res3.value),
-            residual: res3.residual,
-        })
+        Some(Parsed::new(
+            (res1.value, res2.value, res3.value),
+            res3.residual,
+        ))
     }
 }
 
@@ -74,7 +71,7 @@ where
             }
         }
 
-        Some(parsed(results, str))
+        Some(Parsed::new(results, str))
     }
 }
 
@@ -98,7 +95,7 @@ where
     P: FnOnce(&'a str) -> ParserResult<'a, T>,
     F: FnOnce(T) -> U,
 {
-    |str: &'a str| p(str).map(|x| parsed(f(x.value), x.residual))
+    |str: &'a str| p(str).map(|x| Parsed::new(f(x.value), x.residual))
 }
 
 /// Maps parser `str -> ParserResult<T>` to the parse `str -> ParserResult<U>`
@@ -110,7 +107,7 @@ where
     P: FnOnce(&'a str) -> ParserResult<'a, T>,
     F: FnOnce(T) -> Option<U>,
 {
-    |str: &'a str| p(str).and_then(|x| f(x.value).map(|y| parsed(y, x.residual)))
+    |str: &'a str| p(str).and_then(|x| f(x.value).map(|y| Parsed::new(y, x.residual)))
 }
 
 #[cfg(test)]
