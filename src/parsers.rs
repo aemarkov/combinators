@@ -25,7 +25,7 @@ impl_trait!(SignedNumber, i8, i16, i32, i64, i128, isize);
 
 /// Creates parser to read out digits
 pub fn digits() -> impl FnOnce(&str) -> ParserResult<&str> {
-    take_while(|c| c.is_numeric())
+    take_while(|c| c.is_ascii_digit())
 }
 
 /// Creates parser to parse unsigned decimal integer from string

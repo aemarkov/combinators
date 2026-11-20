@@ -3,9 +3,13 @@ use crate::types::*;
 
 /// Creates a parsed which expects a given string
 pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str> + 'b {
-    move |str: &'a str| {
-        if str.starts_with(tag) {
-            Some(parsed(&str[..tag.len()], &str[tag.len()..]))
+    move |s: &'a str| {
+        if s.starts_with(tag) {
+            let (value, residual) = s.split_at(tag.len());
+            Some(Parsed {
+                value: value,
+                residual: residual,
+            })
         } else {
             None
         }
@@ -13,18 +17,20 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
 }
 
 /// Takes a specific number of characters
-pub fn take(n: usize) -> impl FnOnce(&str) -> ParserResult<&str> {
-    move |str| {
-        let mut it = str.char_indices();
-
-        for _ in 0..n {
-            if it.next().is_none() {
-                return None;
-            }
-        }
-
-        let idx = it.next().map(|(idx, _)| idx).unwrap_or(str.len());
-        Some(parsed(&str[..idx], &str[idx..]))
+pub fn take<'a>(n: usize) -> impl FnOnce(&'a str) -> ParserResult<&'a str> {
+    move |s: &str| {
+        let byte_offset = s
+            .char_indices()
+            .map(|(i, _)| i)
+            // add extra iteration, because nth(s.len()) points one position behind the
+            // string
+            .chain(std::iter::once(s.len()))
+            .nth(n)?;
+        let (value, residual) = s.split_at(byte_offset);
+        Some(Parsed {
+            value: value,
+            residual: residual,
+        })
     }
 }
 
@@ -33,12 +39,19 @@ pub fn take_while<F>(f: F) -> impl FnOnce(&str) -> ParserResult<&str>
 where
     F: Fn(char) -> bool,
 {
-    move |str| {
-        if let Some((idx, _)) = (str.char_indices().skip_while(|(_, c)| f(*c))).next() {
-            Some(parsed(&str[..idx], &str[idx..]))
-        } else {
-            Some(parsed(&str, ""))
-        }
+    move |s| {
+        let byte_offset = s
+            .char_indices()
+            // add extra iteration, because nth(s.len()) points one position behind the
+            // string
+            .chain(std::iter::once((s.len(), char::default())))
+            .skip_while(|(_, c)| f(*c))
+            .next()?;
+        let (value, residual) = s.split_at(byte_offset.0);
+        Some(Parsed {
+            value: value,
+            residual: residual,
+        })
     }
 }
 

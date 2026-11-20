@@ -17,9 +17,12 @@ where
     P1: FnOnce(&'a str) -> ParserResult<'a, R1>,
     P2: FnOnce(&'a str) -> ParserResult<'a, R2>,
 {
-    |str: &'a str| {
-        p1(str).and_then(|res1| {
-            p2(res1.residual).map(|res2| parsed((res1.value, res2.value), &res2.residual))
+    |s: &'a str| {
+        let res1 = p1(s)?;
+        let res2 = p2(res1.residual)?;
+        Some(Parsed {
+            value: (res1.value, res2.value),
+            residual: res2.residual,
         })
     }
 }
@@ -38,12 +41,14 @@ where
     P2: FnOnce(&'a str) -> ParserResult<'a, R2>,
     P3: FnOnce(&'a str) -> ParserResult<'a, R3>,
 {
-    |str: &'a str| {
-        p1(str)
-            .and_then(|res1| p2(&res1.residual).map(|res2| (res1.value, res2.value, res2.residual)))
-            .and_then(|res1| {
-                p3(res1.2).map(|res2| parsed((res1.0, res1.1, res2.value), &res2.residual))
-            })
+    |s: &'a str| {
+        let res1 = p1(s)?;
+        let res2 = p2(res1.residual)?;
+        let res3 = p3(res2.residual)?;
+        Some(Parsed {
+            value: (res1.value, res2.value, res3.value),
+            residual: res3.residual,
+        })
     }
 }
 
