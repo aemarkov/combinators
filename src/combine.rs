@@ -10,14 +10,14 @@ use crate::types::*;
 /// separate function for all supported number of arguments manually
 // TODO: Try to use macros?
 pub fn and2<'a, P1, P2, R1, R2>(
-    p1: P1,
-    p2: P2,
-) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2)>
+    mut p1: P1,
+    mut p2: P2,
+) -> impl FnMut(&'a str) -> ParserResult<'a, (R1, R2)>
 where
-    P1: FnOnce(&'a str) -> ParserResult<'a, R1>,
-    P2: FnOnce(&'a str) -> ParserResult<'a, R2>,
+    P1: FnMut(&'a str) -> ParserResult<'a, R1>,
+    P2: FnMut(&'a str) -> ParserResult<'a, R2>,
 {
-    |s: &'a str| {
+    move |s: &'a str| {
         let res1 = p1(s)?;
         let res2 = p2(res1.residual)?;
         Some(Parsed::new((res1.value, res2.value), res2.residual))
@@ -29,16 +29,16 @@ where
 /// EXPR -> EXPR1 EXPR2 EXPR3
 /// ```
 pub fn and3<'a, P1, P2, P3, R1, R2, R3>(
-    p1: P1,
-    p2: P2,
-    p3: P3,
-) -> impl FnOnce(&'a str) -> ParserResult<'a, (R1, R2, R3)>
+    mut p1: P1,
+    mut p2: P2,
+    mut p3: P3,
+) -> impl FnMut(&'a str) -> ParserResult<'a, (R1, R2, R3)>
 where
-    P1: FnOnce(&'a str) -> ParserResult<'a, R1>,
-    P2: FnOnce(&'a str) -> ParserResult<'a, R2>,
-    P3: FnOnce(&'a str) -> ParserResult<'a, R3>,
+    P1: FnMut(&'a str) -> ParserResult<'a, R1>,
+    P2: FnMut(&'a str) -> ParserResult<'a, R2>,
+    P3: FnMut(&'a str) -> ParserResult<'a, R3>,
 {
-    |s: &'a str| {
+    move |s: &'a str| {
         let res1 = p1(s)?;
         let res2 = p2(res1.residual)?;
         let res3 = p3(res2.residual)?;
@@ -54,15 +54,15 @@ where
 /// ```text
 /// EXPR -> EXPR1 ... EXPR_N
 /// ```
-pub fn and<'a, P, I, R>(parsers: I) -> impl FnOnce(&'a str) -> ParserResult<'a, Vec<R>>
+pub fn and<'a, P, R, C>(mut parsers: C) -> impl FnMut(&'a str) -> ParserResult<'a, Vec<R>>
 where
-    P: FnOnce(&'a str) -> ParserResult<'a, R>,
-    I: IntoIterator<Item = P>,
+    P: FnMut(&'a str) -> ParserResult<'a, R>,
+    C: AsMut<[P]>,
 {
-    |str: &'a str| {
+    move |str: &'a str| {
         let mut results: Vec<R> = Vec::new();
         let mut str = str;
-        for parser in parsers {
+        for parser in parsers.as_mut().iter_mut() {
             if let Some(res) = parser(str) {
                 results.push(res.value);
                 str = res.residual;
@@ -80,34 +80,34 @@ where
 /// EXPR -> EXPR1
 ///      |  EXPR2
 /// ```
-pub fn or<'a, P1, P2, R>(p1: P1, p2: P2) -> impl FnOnce(&'a str) -> ParserResult<'a, R>
+pub fn or<'a, P1, P2, R>(mut p1: P1, mut p2: P2) -> impl FnMut(&'a str) -> ParserResult<'a, R>
 where
-    P1: FnOnce(&'a str) -> ParserResult<'a, R>,
-    P2: FnOnce(&'a str) -> ParserResult<'a, R>,
+    P1: FnMut(&'a str) -> ParserResult<'a, R>,
+    P2: FnMut(&'a str) -> ParserResult<'a, R>,
 {
-    |str: &'a str| p1(str).or_else(|| p2(str))
+    move |str: &'a str| p1(str).or_else(|| p2(str))
 }
 
 /// Maps parser `str -> ParserResult<T>` to the parse `str -> ParserResult<U>`
 /// by applying a function T -> U
-pub fn map<'a, T, U, P, F>(p: P, f: F) -> impl FnOnce(&'a str) -> ParserResult<'a, U>
+pub fn map<'a, T, U, P, F>(mut p: P, mut f: F) -> impl FnMut(&'a str) -> ParserResult<'a, U>
 where
-    P: FnOnce(&'a str) -> ParserResult<'a, T>,
-    F: FnOnce(T) -> U,
+    P: FnMut(&'a str) -> ParserResult<'a, T>,
+    F: FnMut(T) -> U,
 {
-    |str: &'a str| p(str).map(|x| Parsed::new(f(x.value), x.residual))
+    move |str: &'a str| p(str).map(|x| Parsed::new(f(x.value), x.residual))
 }
 
 /// Maps parser `str -> ParserResult<T>` to the parse `str -> ParserResult<U>`
 /// by applying a function T -> Option<U>. Differs from [map()] because it
 /// "flats" Option and produce `ParserResult<U>` instead of `ParserResult<Option<U>>`
 /// It's similar to functions like `flatmap` or `bind` from functional languages
-pub fn and_then<'a, T, U, P, F>(p: P, f: F) -> impl FnOnce(&'a str) -> ParserResult<'a, U>
+pub fn and_then<'a, T, U, P, F>(mut p: P, mut f: F) -> impl FnMut(&'a str) -> ParserResult<'a, U>
 where
-    P: FnOnce(&'a str) -> ParserResult<'a, T>,
-    F: FnOnce(T) -> Option<U>,
+    P: FnMut(&'a str) -> ParserResult<'a, T>,
+    F: FnMut(T) -> Option<U>,
 {
-    |str: &'a str| p(str).and_then(|x| f(x.value).map(|y| Parsed::new(y, x.residual)))
+    move |str: &'a str| p(str).and_then(|x| f(x.value).map(|y| Parsed::new(y, x.residual)))
 }
 
 #[cfg(test)]

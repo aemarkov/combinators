@@ -4,7 +4,7 @@ use crate::{base::*, combine::*, types::*};
 use std::{ops::Neg, str::FromStr};
 
 /// Creates a parser to skip a whitespace
-pub fn whitespace() -> impl FnOnce(&str) -> ParserResult<()> {
+pub fn whitespace() -> impl FnMut(&str) -> ParserResult<()> {
     |str| take_while(|c| c.is_whitespace())(str).and_then(|res| Some(Parsed::new((), res.residual)))
 }
 
@@ -24,12 +24,12 @@ pub trait SignedNumber: FromStr {}
 impl_trait!(SignedNumber, i8, i16, i32, i64, i128, isize);
 
 /// Creates parser to read out digits
-pub fn digits() -> impl FnOnce(&str) -> ParserResult<&str> {
+pub fn digits() -> impl FnMut(&str) -> ParserResult<&str> {
     take_while(|c| c.is_ascii_digit())
 }
 
 /// Creates parser to parse unsigned decimal integer from string
-pub fn unsigned_int<'a, T>() -> impl FnOnce(&'a str) -> ParserResult<'a, T>
+pub fn unsigned_int<'a, T>() -> impl FnMut(&'a str) -> ParserResult<'a, T>
 where
     T: UnsignedNumber,
 {
@@ -37,7 +37,7 @@ where
 }
 
 /// Creates parser to parses signed  decimal integer from string
-pub fn signed_int<'a, T>() -> impl FnOnce(&'a str) -> ParserResult<'a, T>
+pub fn signed_int<'a, T>() -> impl FnMut(&'a str) -> ParserResult<'a, T>
 where
     T: SignedNumber,
     T: Neg<Output = T>,

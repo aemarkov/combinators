@@ -23,7 +23,7 @@ impl Display for Operand {
 }
 
 /// Creates a parser to parse "+" or "-"
-pub fn plus_minus() -> impl FnOnce(&str) -> ParserResult<Operand> {
+pub fn plus_minus() -> impl FnMut(&str) -> ParserResult<Operand> {
     |str| match str.chars().next()? {
         '+' => Some(Parsed::new(Operand::PLUS, &str[1..])),
         '-' => Some(Parsed::new(Operand::MINUS, &str[1..])),
@@ -32,7 +32,7 @@ pub fn plus_minus() -> impl FnOnce(&str) -> ParserResult<Operand> {
 }
 
 // Creates a parser to parses "*" or "/"
-pub fn mul_div() -> impl FnOnce(&str) -> ParserResult<Operand> {
+pub fn mul_div() -> impl FnMut(&str) -> ParserResult<Operand> {
     |str| match str.chars().next()? {
         '*' => Some(Parsed::new(Operand::MULT, &str[1..])),
         '/' => Some(Parsed::new(Operand::DIV, &str[1..])),
@@ -133,7 +133,7 @@ impl AstNode {
 }
 
 /*
-NOTE: All other functions have signature (&str) -> FnOnce(&str) -> ParserResult<T>. So those
+NOTE: All other functions have signature (&str) -> FnMut(&str) -> ParserResult<T>. So those
 functions creates a parser function, which can be combined with other parsers. However, it's not
 possible to have a recursive function with "impl Trait" return type.
 There are some possible solutions:

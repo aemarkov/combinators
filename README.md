@@ -22,7 +22,7 @@ This project contains several basic parsers, combinators along with several exam
 
 All parsers follows similar signature:
 ```rs
-fn parser(/*arguments*/) -> impl FnOnce(&'a str) -> ParserResult<&'a str>;
+    fn parser(/*arguments*/) -> impl FnMut(&'a str) -> ParserResult<&'a str>;
 
 /// Result of the parsing
 /// `value`    - parsed value
@@ -91,7 +91,7 @@ Implement HEX parser.
 
 First, we need to parse a hex byte from string: take 2 symbols and trying to parse them into an `u8` integer. We use `take(2)` to take symbols and `and_then` to map `&str` to `u8` by applyting function `&str -> Option<u8>`.
 ```rs
-fn hex_byte<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
+fn hex_byte<'a>() -> impl FnMut(&'a str) -> ParserResult<u8> {
     |str: &'a str| {
         take(2)(str).and_then(|x| {
             u8::from_str_radix(x.value, 16)
@@ -106,7 +106,7 @@ Next, we need to take `#` following by three hex values. We actively use composi
 - use `and3(...)` with previously implemented `hex_byte()` to parse three subsequent bytes
 - use `and2()` with `tag()` and previously implemented three bytes parser to parse `#` following by three hex bytes
 ```rs
-fn hex_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
+fn hex_color<'a>() -> impl FnMut(&'a str) -> ParserResult<(u8, u8, u8)> {
     map(
         and2(tag("#"), and3(hex_byte(), hex_byte(), hex_byte())),
         |(_, rgb)| rgb,
@@ -117,12 +117,12 @@ fn hex_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
 Implement RGB parser in a same way:
 ```rs
 /// Parses rgb color, e.g. rgb(10, 20, 30) with any spaces with braces
-fn rgb_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
+fn rgb_color<'a>() -> impl FnMut(&'a str) -> ParserResult<(u8, u8, u8)> {
     map(and3(tag("rgb("), triplet(), tag(")")), |(_, rgb, _)| rgb)
 }
 
 /// Parses three comma separated decimals, e.g. 10, 20, 30
-fn triplet<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
+fn triplet<'a>() -> impl FnMut(&'a str) -> ParserResult<(u8, u8, u8)> {
     and3(
         number_with_comma(),
         number_with_comma(),
@@ -131,12 +131,12 @@ fn triplet<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
 }
 
 /// Parses decimal with spaces and comma, e.g. "  10  ,"
-fn number_with_comma<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
+fn number_with_comma<'a>() -> impl FnMut(&'a str) -> ParserResult<u8> {
     map(and2(number_with_space(), tag(",")), |(x, _)| x)
 }
 
 /// Parses decimal with spaces around, e.g. " 10  "
-fn number_with_space<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
+fn number_with_space<'a>() -> impl FnMut(&'a str) -> ParserResult<u8> {
     map(
         and3(whitespace(), unsigned_int(), whitespace()),
         |(_, x, _)| x,
@@ -146,7 +146,7 @@ fn number_with_space<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
 
 And finally, we can combine both HEX and RGB parsers into a single one using 'or`:
 ```rs
-fn color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
+fn color<'a>() -> impl FnMut(&'a str) -> ParserResult<Color> {
     or(rgb_color(), hex_color())
 }
 

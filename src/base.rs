@@ -2,7 +2,7 @@
 use crate::types::*;
 
 /// Creates a parsed which expects a given string
-pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str> + 'b {
+pub fn tag<'a, 'b>(tag: &'b str) -> impl FnMut(&'a str) -> ParserResult<&'a str> + 'b {
     move |s: &'a str| {
         if s.starts_with(tag) {
             let (value, residual) = s.split_at(tag.len());
@@ -14,7 +14,7 @@ pub fn tag<'a, 'b>(tag: &'b str) -> impl FnOnce(&'a str) -> ParserResult<&'a str
 }
 
 /// Takes a specific number of characters
-pub fn take<'a>(n: usize) -> impl FnOnce(&'a str) -> ParserResult<&'a str> {
+pub fn take<'a>(n: usize) -> impl FnMut(&'a str) -> ParserResult<&'a str> {
     move |s: &str| {
         let byte_offset = s
             .char_indices()
@@ -29,7 +29,7 @@ pub fn take<'a>(n: usize) -> impl FnOnce(&'a str) -> ParserResult<&'a str> {
 }
 
 /// Takes a characters while predicate is true
-pub fn take_while<F>(f: F) -> impl FnOnce(&str) -> ParserResult<&str>
+pub fn take_while<F>(f: F) -> impl FnMut(&str) -> ParserResult<&str>
 where
     F: Fn(char) -> bool,
 {

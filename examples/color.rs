@@ -8,7 +8,7 @@ use combinators::*;
 type Color = (u8, u8, u8);
 
 /// Parses HEX color, e.g. #aabbcc
-fn hex_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
+fn hex_color<'a>() -> impl FnMut(&'a str) -> ParserResult<Color> {
     map(
         and2(tag("#"), and3(hex_byte(), hex_byte(), hex_byte())),
         |(_, rgb)| rgb,
@@ -16,7 +16,7 @@ fn hex_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
 }
 
 /// Parses 2-digits HEX byte, e.g. "aa"
-fn hex_byte() -> impl FnOnce(&str) -> ParserResult<u8> {
+fn hex_byte() -> impl FnMut(&str) -> ParserResult<u8> {
     |str: &str| {
         take(2)(str).and_then(|x| {
             u8::from_str_radix(x.value, 16)
@@ -27,12 +27,12 @@ fn hex_byte() -> impl FnOnce(&str) -> ParserResult<u8> {
 }
 
 /// Parses rgb color, e.g. rgb(10, 20, 30) with any spaces with braces
-fn rgb_color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
+fn rgb_color<'a>() -> impl FnMut(&'a str) -> ParserResult<Color> {
     map(and3(tag("rgb("), triplet(), tag(")")), |(_, rgb, _)| rgb)
 }
 
 /// Parses three comma separated decimals, e.g. 10, 20, 30
-fn triplet<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
+fn triplet<'a>() -> impl FnMut(&'a str) -> ParserResult<(u8, u8, u8)> {
     and3(
         number_with_comma(),
         number_with_comma(),
@@ -41,12 +41,12 @@ fn triplet<'a>() -> impl FnOnce(&'a str) -> ParserResult<(u8, u8, u8)> {
 }
 
 /// Parses decimal with spaces and comma, e.g. "  10  ,"
-fn number_with_comma<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
+fn number_with_comma<'a>() -> impl FnMut(&'a str) -> ParserResult<u8> {
     map(and2(number_with_space(), tag(",")), |(x, _)| x)
 }
 
 /// Parses decimal with spaces around, e.g. " 10  "
-fn number_with_space<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
+fn number_with_space<'a>() -> impl FnMut(&'a str) -> ParserResult<u8> {
     map(
         and3(whitespace(), unsigned_int(), whitespace()),
         |(_, x, _)| x,
@@ -54,7 +54,7 @@ fn number_with_space<'a>() -> impl FnOnce(&'a str) -> ParserResult<u8> {
 }
 
 /// Parses either hex or rgb color
-fn color<'a>() -> impl FnOnce(&'a str) -> ParserResult<Color> {
+fn color<'a>() -> impl FnMut(&'a str) -> ParserResult<Color> {
     or(rgb_color(), hex_color())
 }
 
